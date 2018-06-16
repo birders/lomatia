@@ -1,5 +1,7 @@
 extern crate futures;
 extern crate hyper;
+#[macro_use]
+extern crate serde_json;
 
 mod server_administration;
 
@@ -15,7 +17,10 @@ fn handle_request(req: Request<Body>) -> BoxFut {
 
     match (req.method(), req.uri().path()) {
         (&Method::GET, "/_matrix/client/versions") => {
-            server_administration::versions();
+            response = Response::new()
+                .with_status(StatusCode::OK)
+                .with_header(hyper::header::ContentType::json())
+                .with_body(server_administration::versions().to_string())
         }
         _ => {
             *response.status_mut() = StatusCode::NOT_FOUND;
