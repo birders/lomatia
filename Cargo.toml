@@ -6,4 +6,4 @@ authors = [ "LEARAX <willculhane3@gmail.com>",
 
 [dependencies]
 hyper = "0.12.1"
-futures = "0.2.1"
+futures = "0.1"
