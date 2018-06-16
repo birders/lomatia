@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate serde_json;
 
 /// Gets the versions of the specification supported by the server.

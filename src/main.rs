@@ -6,7 +6,7 @@ extern crate serde_json;
 mod server_administration;
 
 use futures::future;
-use hyper::rt::{Future, Stream};
+use hyper::rt::Future;
 use hyper::service::service_fn;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 
@@ -17,10 +17,8 @@ fn handle_request(req: Request<Body>) -> BoxFut {
 
     match (req.method(), req.uri().path()) {
         (&Method::GET, "/_matrix/client/versions") => {
-            response = Response::new()
-                .with_status(StatusCode::OK)
-                .with_header(hyper::header::ContentType::json())
-                .with_body(server_administration::versions().to_string())
+            *response.status_mut() = StatusCode::NOT_FOUND;
+            *response.body_mut() = Body::from(server_administration::versions().to_string());
         }
         _ => {
             *response.status_mut() = StatusCode::NOT_FOUND;
