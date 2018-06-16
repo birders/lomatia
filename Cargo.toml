@@ -1,6 +1,6 @@
 [package]
 name = "lomatia"
 version = "0.1.0"
-authors = ["LEARAX <willculhane3@gmail.com>"]
+authors = ["LEARAX <willculhane3@gmail.com>", "vpzomtrrfrt <vpzomtrrfrt@gmail.com>"]
 
 [dependencies]
