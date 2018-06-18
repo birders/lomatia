@@ -14,12 +14,12 @@ type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
 struct ErrorBody<'a> {
     pub errcode: &'static str,
-    pub error: &'a str
+    pub error: &'a str,
 }
 impl<'a> ErrorBody<'a> {
     const UNRECOGNIZED: ErrorBody<'static> = ErrorBody {
         errcode: "M_UNRECOGNIZED",
-        error: "Unrecognized request"
+        error: "Unrecognized request",
     };
 }
 impl<'a> ToString for ErrorBody<'a> {
@@ -39,12 +39,18 @@ fn handle_request(req: Request<Body>) -> BoxFut {
     match (req.method(), req.uri().path()) {
         (&Method::GET, "/_matrix/client/versions") => {
             *response.status_mut() = StatusCode::OK;
-            response.headers_mut().insert(hyper::header::CONTENT_TYPE, hyper::header::HeaderValue::from_static(APPLICATION_JSON));
+            response.headers_mut().insert(
+                hyper::header::CONTENT_TYPE,
+                hyper::header::HeaderValue::from_static(APPLICATION_JSON),
+            );
             *response.body_mut() = Body::from(server_administration::versions().to_string());
         }
         _ => {
             *response.status_mut() = StatusCode::BAD_REQUEST;
-            response.headers_mut().insert(hyper::header::CONTENT_TYPE, hyper::header::HeaderValue::from_static(APPLICATION_JSON));
+            response.headers_mut().insert(
+                hyper::header::CONTENT_TYPE,
+                hyper::header::HeaderValue::from_static(APPLICATION_JSON),
+            );
             *response.body_mut() = Body::from(ErrorBody::UNRECOGNIZED.to_string());
         }
     };
