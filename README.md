@@ -1,5 +1,5 @@
 ## Lomatia
-
+Lomatia is an experimental Matrix homeserver written in Rust.
 
 # TODO
 
@@ -23,7 +23,7 @@
        - [ ] Add a tag to a room
     - Server administration
        - [ ] Get information about user
-       - [ ] Get versions of specification supported by the server
+       - [x] Get versions of specification supported by the server
     - Room creation
        - [ ] Create a new room
     - Device management
