@@ -39,19 +39,19 @@ impl<'a> ErrorBody<'a> {
     };
     const NOT_JSON: ErrorBody<'static> = ErrorBody {
         errcode: "M_NOT_JSON",
-        error: "Content not JSON.",
+        error: "Content not JSON",
     };
     const BAD_JSON: ErrorBody<'static> = ErrorBody {
         errcode: "M_BAD_JSON",
-        error: "Invalid JSON body.",
+        error: "Invalid JSON body",
     };
     const GUEST_ACCESS_FORBIDDEN: ErrorBody<'static> = ErrorBody {
         errcode: "M_GUEST_ACCESS_FORBIDDEN",
-        error: "Guest accounts are forbidden.",
+        error: "Guest accounts are forbidden",
     };
     const INVALID_USERNAME: ErrorBody<'static> = ErrorBody {
         errcode: "M_INVALID_USERNAME",
-        error: "The desired user ID is not a valid user name.",
+        error: "The desired user ID is not a valid user name",
     };
     const INTERNAL_ERROR: ErrorBody<'static> = ErrorBody {
         errcode: error_code::CHAT_LOMATIA_INTERNAL_ERROR,
