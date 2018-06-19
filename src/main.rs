@@ -8,6 +8,9 @@ extern crate qstring;
 extern crate lazy_static;
 extern crate regex;
 extern crate bcrypt;
+extern crate tokio_postgres;
+extern crate tokio_core;
+extern crate uuid;
 
 mod server_administration;
 mod user_data;
@@ -83,10 +86,44 @@ impl<'a> ToString for ErrorBody<'a> {
     }
 }
 
+#[derive(Debug)]
+enum Error {
+    DB(tokio_postgres::Error),
+    CanceledFuture
+}
+
+impl From<futures::Canceled> for Error {
+    fn from(_e: futures::Canceled) -> Error {
+        Error::CanceledFuture
+    }
+}
+
+impl From<tokio_postgres::Error> for Error {
+    fn from(err: tokio_postgres::Error) -> Error {
+        Error::DB(err)
+    }
+}
+
+fn run_on_main<R, E: From<futures::Canceled>, F: 'static + Future<Item=R, Error=E> + Send>(remote: &tokio_core::reactor::Remote, f: impl FnOnce(&tokio_core::reactor::Handle) -> F + Send + 'static) -> Box<Future<Item=R, Error=E> + Send> {
+    match remote.handle() {
+        Some(handle) => Box::new(f(&handle)),
+        None => {
+            let (tx, rx) = futures::sync::oneshot::channel::<F>();
+            remote.spawn(move |handle| {
+                tx.send(f(handle)).ok();
+                Ok(())
+            });
+            Box::new(rx.flatten())
+        }
+    }
+}
+
 const APPLICATION_JSON: &'static str = "application/json";
 
 pub struct LMServer {
-    cpupool: Arc<futures_cpupool::CpuPool>
+    cpupool: Arc<futures_cpupool::CpuPool>,
+    db_params: tokio_postgres::params::ConnectParams,
+    remote: tokio_core::reactor::Remote
 }
 
 impl Service for LMServer {
@@ -119,16 +156,22 @@ impl Service for LMServer {
 fn main() {
     let addr = ([127, 0, 0, 1], 8448).into();
 
+    let mut core = tokio_core::reactor::Core::new().unwrap();
+
     let cpupool = Arc::new(futures_cpupool::Builder::new().create());
+    let db_params = tokio_postgres::params::IntoConnectParams::into_connect_params(std::env::var("DATABASE_URL").expect("Missing DATABASE_URL")).unwrap();
+    let remote = core.remote();
 
     let server = Server::bind(&addr)
         .serve(move || -> future::FutureResult<LMServer, hyper::Error> {
             future::ok(LMServer {
-                cpupool: cpupool.clone()
+                cpupool: cpupool.clone(),
+                db_params: db_params.clone(),
+                remote: remote.clone()
             })
         })
-        .map_err(|e| eprintln!("server error: {}", e));
+    .map_err(|e| eprintln!("server error: {}", e));
 
     println!("Listening on http://{}", addr);
-    hyper::rt::run(server);
+    core.run(server);
 }
