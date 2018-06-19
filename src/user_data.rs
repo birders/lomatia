@@ -63,18 +63,18 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
                                     Ok(hash) => {
                                         println!("{:?}", hash);
                                         Box::new(
-                                            run_on_main(&remote, |handle| {
+                                            run_on_main(&remote, move |handle| {
                                                 tokio_postgres::Connection::connect(
                                                     db_params,
                                                     tokio_postgres::TlsMode::None,
                                                     &handle,
-                                                ).and_then(|db| db.prepare(REGISTER_QUERY))
-                                                    .and_then(|(q, db)| {
+                                                ).and_then(move |db| db.prepare(REGISTER_QUERY)
+                                                    .and_then(move |(q, db)| {
                                                         let id = uuid::Uuid::new_v4();
                                                         let values: Vec<&tokio_postgres::types::ToSql> = vec![&id, &username, &hash];
-                                                        db.query(&q, &values).and_then(|_| id)
+                                                        db.execute(&q, &values).and_then(move |_| Ok(id))
                                                     })
-                                                    .map_err(|(e, db)| e)
+                                                    .map_err(|(e, _db)| e))
                                                     .map_err(::Error::from)
                                             }).then(
                                                 |res| {
