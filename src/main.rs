@@ -4,6 +4,10 @@ extern crate hyper;
 extern crate serde_json;
 extern crate futures_cpupool;
 extern crate qstring;
+#[macro_use]
+extern crate lazy_static;
+extern crate regex;
+extern crate bcrypt;
 
 mod server_administration;
 mod user_data;
@@ -18,6 +22,7 @@ type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
 mod error_code {
     pub const CHAT_LOMATIA_INVALID_PARAM: &'static str = "CHAT_LOMATIA_INVALID_PARAM";
+    pub const CHAT_LOMATIA_INTERNAL_ERROR: &'static str = "CHAT_LOMATIA_INTERNAL_ERROR";
 }
 
 struct ErrorBody<'a> {
@@ -41,6 +46,14 @@ impl<'a> ErrorBody<'a> {
         errcode: "M_GUEST_ACCESS_FORBIDDEN",
         error: "Guest accounts are forbidden."
     };
+    const INVALID_USERNAME: ErrorBody<'static> = ErrorBody {
+        errcode: "M_INVALID_USERNAME",
+        error: "The desired user ID is not a valid user name."
+    };
+    const INTERNAL_ERROR: ErrorBody<'static> = ErrorBody {
+        errcode: error_code::CHAT_LOMATIA_INTERNAL_ERROR,
+        error: "Internal server error"
+    };
 
     pub fn new<'b>(errcode: &'static str, error: &'b str) -> ErrorBody<'b> {
         ErrorBody {
@@ -52,7 +65,10 @@ impl<'a> ErrorBody<'a> {
 impl<'a> ErrorBody<'a> {
     pub fn to_response(&self) -> Response<Body> {
         let mut resp = Response::new(Body::from(self.to_string()));
-        *resp.status_mut() = StatusCode::BAD_REQUEST;
+        *resp.status_mut() = match self.errcode {
+            error_code::CHAT_LOMATIA_INTERNAL_ERROR => StatusCode::INTERNAL_SERVER_ERROR,
+            _ => StatusCode::BAD_REQUEST
+        };
         resp.headers_mut().insert(hyper::header::CONTENT_TYPE, hyper::header::HeaderValue::from_static(APPLICATION_JSON));
 
         resp
