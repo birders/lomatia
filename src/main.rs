@@ -3,6 +3,7 @@ extern crate hyper;
 #[macro_use]
 extern crate serde_json;
 extern crate futures_cpupool;
+extern crate qstring;
 
 mod server_administration;
 mod user_data;
@@ -14,6 +15,10 @@ use hyper::service::Service;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 
 type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
+
+mod error_code {
+    pub const CHAT_LOMATIA_INVALID_PARAM: &'static str = "CHAT_LOMATIA_INVALID_PARAM";
+}
 
 struct ErrorBody<'a> {
     pub errcode: &'static str,
@@ -32,6 +37,17 @@ impl<'a> ErrorBody<'a> {
         errcode: "M_BAD_JSON",
         error: "Invalid JSON body."
     };
+    const GUEST_ACCESS_FORBIDDEN: ErrorBody<'static> = ErrorBody {
+        errcode: "M_GUEST_ACCESS_FORBIDDEN",
+        error: "Guest accounts are forbidden."
+    };
+
+    pub fn new<'b>(errcode: &'static str, error: &'b str) -> ErrorBody<'b> {
+        ErrorBody {
+            errcode,
+            error
+        }
+    }
 }
 impl<'a> ErrorBody<'a> {
     pub fn to_response(&self) -> Response<Body> {
@@ -53,7 +69,7 @@ impl<'a> ToString for ErrorBody<'a> {
 
 const APPLICATION_JSON: &'static str = "application/json";
 
-struct LMServer {
+pub struct LMServer {
     cpupool: Arc<futures_cpupool::CpuPool>
 }
 
@@ -72,7 +88,7 @@ impl Service for LMServer {
                 Box::new(future::ok(response))
             }
             (&Method::POST, "/_matrix/client/r0/register") => {
-                user_data::register(req)
+                user_data::register(self, req)
             }
             _ => {
                 let mut response = Response::new(Body::from(ErrorBody::UNRECOGNIZED.to_string()));
