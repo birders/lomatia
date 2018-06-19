@@ -102,7 +102,7 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
                 )),
             }
         } else {
-            let session_id = "_session_id"; // TODO randomly generate this
+            let session_id = "_session_id"; // TODO: Generate randomly
             let mut resp = Response::new(Body::from(
                 json!({
                          "flows": [

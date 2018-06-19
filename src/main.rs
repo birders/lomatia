@@ -162,6 +162,7 @@ impl Service for LMServer {
 }
 
 fn main() {
+    // TODO: Allow specification of address + port via flags
     let addr = ([127, 0, 0, 1], 8448).into();
 
     let mut core = tokio_core::reactor::Core::new().unwrap();
