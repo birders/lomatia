@@ -2,7 +2,6 @@ use bcrypt;
 use hyper;
 use qstring;
 use serde_json;
-use tokio_core;
 use tokio_postgres;
 use uuid;
 
@@ -80,11 +79,10 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
                     }
                     let password = body["password"].to_string();
                     let req_device_id = body["device_id"].as_str().map(|x| x.to_owned());
-                    println!("hashing password");
+                    println!("Hashing password...");
                     Box::new(
                         cpupool
                             .spawn_fn(move || {
-                                println!("hashing...");
                                 bcrypt::hash(&password, bcrypt::DEFAULT_COST)
                             })
                             .then(move |hash_res| -> BoxFut {
@@ -108,7 +106,6 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
                                                         })
                                                         .and_then(
                                                             move |((user_id, username), db)| {
-                                                                println!("{:?}", user_id);
                                                                 let device_id = req_device_id
                                                                     .unwrap_or_else(|| {
                                                                         generate_device_id()

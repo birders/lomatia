@@ -211,6 +211,6 @@ fn main() {
         })
         .map_err(|e| eprintln!("server error: {}", e));
 
-    println!("Listening on http://{}", address);
+    println!("Listening on http://{}...", address);
     core.run(server);
 }
