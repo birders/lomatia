@@ -1,7 +1,7 @@
-## Lomatia
+# Lomatia
 Lomatia is an experimental Matrix homeserver written in Rust.
 
-# TODO
+## TODO
 
  - Core API
     - User data
@@ -15,7 +15,7 @@ Lomatia is an experimental Matrix homeserver written in Rust.
        - [ ] Set avatar URL
        - [ ] Get display name
        - [ ] Set display name
-       - [ ] Register account
+       - [x] Register account
        - [ ] Set account data for user
        - [ ] Set account data for user, room-specific
        - [ ] List tags for room
