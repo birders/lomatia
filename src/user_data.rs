@@ -69,11 +69,11 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
         let body = body.unwrap(); // errors are handled above, so unwrap should be okay
 
         if let Some(auth) = body["auth"].as_object() {
-            match query.get("kind") {
-                Some("guest") => {
+            match query.get("kind").unwrap_or("user") {
+                "guest" => {
                     Box::new(future::ok(ErrorBody::GUEST_ACCESS_FORBIDDEN.to_response()))
                 }
-                Some("user") => {
+                "user" => {
                     let username = body["username"].as_str().unwrap_or("").to_owned();
                     if !VALID_USERNAME_RE.is_match(&username) {
                         return Box::new(future::ok(ErrorBody::INVALID_USERNAME.to_response()));
