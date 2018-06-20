@@ -1,5 +1,4 @@
 rusty-tags.*
 .envrc
-/database
 /target
 **/*.rs.bk
