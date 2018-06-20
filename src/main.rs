@@ -127,6 +127,7 @@ pub struct LMServer {
     cpupool: Arc<futures_cpupool::CpuPool>,
     db_params: tokio_postgres::params::ConnectParams,
     remote: tokio_core::reactor::Remote,
+    hostname: Arc<String>
 }
 
 impl Service for LMServer {
@@ -171,6 +172,7 @@ fn main() {
     let db_params = tokio_postgres::params::IntoConnectParams::into_connect_params(
         std::env::var("DATABASE_URL").expect("Missing DATABASE_URL"),
     ).unwrap();
+    let hostname = Arc::new("localhost:8448".to_owned()); // TODO adjust this
     let remote = core.remote();
 
     let server = Server::bind(&addr)
@@ -179,6 +181,7 @@ fn main() {
                 cpupool: cpupool.clone(),
                 db_params: db_params.clone(),
                 remote: remote.clone(),
+                hostname: hostname.clone()
             })
         })
         .map_err(|e| eprintln!("server error: {}", e));
