@@ -7,6 +7,7 @@ extern crate qstring;
 #[macro_use]
 extern crate lazy_static;
 extern crate bcrypt;
+extern crate clap;
 extern crate regex;
 extern crate tokio_core;
 extern crate tokio_postgres;
@@ -19,6 +20,7 @@ use futures::future;
 use hyper::rt::Future;
 use hyper::service::Service;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
+use std::str::FromStr;
 use std::sync::Arc;
 
 type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
@@ -163,8 +165,31 @@ impl Service for LMServer {
 }
 
 fn main() {
-    // TODO: Allow specification of address + port via flags
-    let addr = ([127, 0, 0, 1], 8448).into();
+    let matches = clap::App::new("Lomatia")
+        .version(env!("CARGO_PKG_VERSION"))
+        .about("A Matrix homeserver written in Rust")
+        .arg(
+            clap::Arg::with_name("address")
+                .short("a")
+                .long("address")
+                .help("Sets the server IP address")
+                .takes_value(true)
+                .default_value("127.0.0.1"),
+        )
+        .arg(
+            clap::Arg::with_name("port")
+                .short("p")
+                .long("port")
+                .help("Sets the port used by the server")
+                .takes_value(true)
+                .default_value("8448"),
+        )
+        .get_matches();
+
+    let ip_address = std::net::IpAddr::from_str(matches.value_of("address").unwrap()).unwrap();
+    let port = matches.value_of("port").unwrap().parse::<u16>().unwrap();
+
+    let address = (ip_address, port).into();
 
     let mut core = tokio_core::reactor::Core::new().unwrap();
 
@@ -175,7 +200,7 @@ fn main() {
     let hostname = Arc::new("localhost:8448".to_owned()); // TODO adjust this
     let remote = core.remote();
 
-    let server = Server::bind(&addr)
+    let server = Server::bind(&address)
         .serve(move || -> future::FutureResult<LMServer, hyper::Error> {
             future::ok(LMServer {
                 cpupool: cpupool.clone(),
@@ -186,6 +211,6 @@ fn main() {
         })
         .map_err(|e| eprintln!("server error: {}", e));
 
-    println!("Listening on http://{}", addr);
+    println!("Listening on http://{}", address);
     core.run(server);
 }
