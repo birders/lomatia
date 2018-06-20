@@ -127,7 +127,7 @@ pub struct LMServer {
     cpupool: Arc<futures_cpupool::CpuPool>,
     db_params: tokio_postgres::params::ConnectParams,
     remote: tokio_core::reactor::Remote,
-    hostname: Arc<String>
+    hostname: Arc<String>,
 }
 
 impl Service for LMServer {
@@ -181,7 +181,7 @@ fn main() {
                 cpupool: cpupool.clone(),
                 db_params: db_params.clone(),
                 remote: remote.clone(),
-                hostname: hostname.clone()
+                hostname: hostname.clone(),
             })
         })
         .map_err(|e| eprintln!("server error: {}", e));

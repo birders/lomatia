@@ -30,11 +30,19 @@ fn generate_device_id() -> String {
     uuid::Uuid::new_v4().to_string()
 }
 
-fn create_access_token(db: tokio_postgres::Connection, user_id: uuid::Uuid, device_id: String) -> impl Future<Item=(String, tokio_postgres::Connection), Error=(tokio_postgres::Error, tokio_postgres::Connection)> {
+fn create_access_token(
+    db: tokio_postgres::Connection,
+    user_id: uuid::Uuid,
+    device_id: String,
+) -> impl Future<
+    Item = (String, tokio_postgres::Connection),
+    Error = (tokio_postgres::Error, tokio_postgres::Connection),
+> {
     let token = generate_access_token();
-    db.prepare(NEW_TOKEN_QUERY)
-        .and_then(move |(q, db)| db.execute(&q, &[&token, &user_id, &device_id])
-        .and_then(move |(_, db)| Ok((token.to_string(), db))))
+    db.prepare(NEW_TOKEN_QUERY).and_then(move |(q, db)| {
+        db.execute(&q, &[&token, &user_id, &device_id])
+            .and_then(move |(_, db)| Ok((token.to_string(), db)))
+    })
 }
 
 pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
@@ -89,36 +97,43 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
                                                     db_params,
                                                     tokio_postgres::TlsMode::None,
                                                     &handle,
-                                                    ).and_then(move |db| db.prepare(REGISTER_QUERY)
-                                                               .and_then(move |(q, db)| {
-                                                                   let id = uuid::Uuid::new_v4();
-                                                                   {
+                                                ).and_then(move |db| {
+                                                    db.prepare(REGISTER_QUERY)
+                                                        .and_then(move |(q, db)| {
+                                                            let id = uuid::Uuid::new_v4();
+                                                            {
                                                                        let values: Vec<&tokio_postgres::types::ToSql> = vec![&id, &username, &hash];
                                                                        db.execute(&q, &values)
                                                                    }.and_then(move |(_, db)| Ok(((id, username), db)))
-                                                               }).and_then(
-                                                                   move |((user_id, username), db)| {
-                                                                       println!("{:?}", user_id);
-                                                                       let device_id = req_device_id.unwrap_or_else(|| generate_device_id());
-                                                                       create_access_token(db, user_id.clone(), device_id.clone())
+                                                        })
+                                                        .and_then(
+                                                            move |((user_id, username), db)| {
+                                                                println!("{:?}", user_id);
+                                                                let device_id = req_device_id
+                                                                    .unwrap_or_else(|| {
+                                                                        generate_device_id()
+                                                                    });
+                                                                create_access_token(db, user_id.clone(), device_id.clone())
                                                                            .and_then(|(token, db)| Ok((token, device_id, username)))
-                                                                   }
-                                                                )
-                                                               .map_err(|(e, _db)| e))
-                                                               .map_err(::Error::from)
-                                            })
-                                        .and_then(move |(token, device_id, username)| {
-                                            Ok(Response::new(Body::from(json!({
+                                                            },
+                                                        )
+                                                        .map_err(|(e, _db)| e)
+                                                })
+                                                    .map_err(::Error::from)
+                                            }).and_then(move |(token, device_id, username)| {
+                                                Ok(Response::new(Body::from(
+                                                    json!({
                                                 "user_id": username,
                                                 "access_token": token,
                                                 "device_id": device_id,
                                                 "home_server": *hostname
-                                            }).to_string())))
-                                        })
-                                            .or_else(|err| {
-                                                eprintln!("{:?}", err);
-                                                Ok(ErrorBody::INTERNAL_ERROR.to_response())
+                                            }).to_string(),
+                                                )))
                                             })
+                                                .or_else(|err| {
+                                                    eprintln!("{:?}", err);
+                                                    Ok(ErrorBody::INTERNAL_ERROR.to_response())
+                                                }),
                                         )
                                     }
                                     Err(err) => {
