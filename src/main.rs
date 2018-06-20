@@ -172,7 +172,7 @@ fn main() {
             clap::Arg::with_name("address")
                 .short("a")
                 .long("address")
-                .help("Sets IP address used by the server")
+                .help("Sets the IP address used by the server")
                 .takes_value(true)
                 .default_value("127.0.0.1"),
         )
