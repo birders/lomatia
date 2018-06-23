@@ -1,0 +1,42 @@
+use bcrypt;
+use hyper;
+use qstring;
+use serde_json;
+use tokio_postgres;
+use uuid;
+
+use futures::{future, Future, Stream};
+use hyper::{Body, Request, Response, StatusCode};
+use regex::Regex;
+
+use {error_code, run_on_main, BoxFut, ErrorBody, LMServer, APPLICATION_JSON};
+
+pub fn login(server: &LMServer, req: Request<Body>) -> BoxFut {
+    // Request will be of the form:
+    // {
+    //   "type": "m.login.password",
+    //   "user": "<user_id or user localpart>",
+    //   "password": "<password>"
+    // }
+    // or:
+    // {
+    //   "type": "m.login.password",
+    //   "medium": "<The medium of the third party identifier. Must be 'email'>",
+    //   "address": "<The third party address of the user>",
+    //   "password": "<password>"
+    // }
+    // or:
+    // {
+    //   "type": "m.login.token",
+    //   "token": "<login token>"
+    // }
+    //
+    // Response should be of the form:
+    // {
+    //   "user_id": "<user_id>",
+    //   "access_token": "<access_token>",
+    //   "home_server": "<hostname>",
+    //   "device_id": "<device_id>"
+    // }
+
+}
