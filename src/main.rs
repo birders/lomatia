@@ -14,6 +14,7 @@ extern crate tokio_postgres;
 extern crate uuid;
 
 mod server_administration;
+// mod session_management;
 mod user_data;
 
 use futures::future;
@@ -140,17 +141,9 @@ impl Service for LMServer {
 
     fn call(&mut self, req: Request<Body>) -> BoxFut {
         match (req.method(), req.uri().path()) {
-            (&Method::GET, "/_matrix/client/versions") => {
-                let mut response =
-                    Response::new(Body::from(server_administration::versions().to_string()));
-                *response.status_mut() = StatusCode::OK;
-                response.headers_mut().insert(
-                    hyper::header::CONTENT_TYPE,
-                    hyper::header::HeaderValue::from_static(APPLICATION_JSON),
-                );
-                Box::new(future::ok(response))
-            }
+            (&Method::GET, "/_matrix/client/versions") => server_administration::versions(),
             (&Method::POST, "/_matrix/client/r0/register") => user_data::register(self, req),
+            // (&Method::POST, "/_matrix/client/r0/login") => session_management::login(self, req),
             _ => {
                 let mut response = Response::new(Body::from(ErrorBody::UNRECOGNIZED.to_string()));
                 *response.status_mut() = StatusCode::BAD_REQUEST;

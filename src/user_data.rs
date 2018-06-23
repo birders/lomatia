@@ -69,9 +69,7 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
 
         if let Some(auth) = body["auth"].as_object() {
             match query.get("kind").unwrap_or("user") {
-                "guest" => {
-                    Box::new(future::ok(ErrorBody::GUEST_ACCESS_FORBIDDEN.to_response()))
-                }
+                "guest" => Box::new(future::ok(ErrorBody::GUEST_ACCESS_FORBIDDEN.to_response())),
                 "user" => {
                     let username = body["username"].as_str().unwrap_or("").to_owned();
                     if !VALID_USERNAME_RE.is_match(&username) {
@@ -82,9 +80,7 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
                     println!("Hashing password...");
                     Box::new(
                         cpupool
-                            .spawn_fn(move || {
-                                bcrypt::hash(&password, bcrypt::DEFAULT_COST)
-                            })
+                            .spawn_fn(move || bcrypt::hash(&password, bcrypt::DEFAULT_COST))
                             .then(move |hash_res| -> BoxFut {
                                 match hash_res {
                                     Ok(hash) => {
