@@ -1,5 +1,6 @@
-# Lomatia
-Lomatia is an experimental Matrix homeserver written in Rust.
+[![](https://github.com/birders/lomatia/icon.png)](https://github.com/birders/lomatia)
+An experimental Matrix homeserver written in Rust.
+==================================================
 
 ## TODO
 
