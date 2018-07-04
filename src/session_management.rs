@@ -38,5 +38,20 @@ pub fn login(server: &LMServer, req: Request<Body>) -> BoxFut {
     //   "home_server": "<hostname>",
     //   "device_id": "<device_id>"
     // }
-
+    Box::new(req.into_body().concat2().and_then(move |body| -> BoxFut {
+        let body: Result<serde_json::Value, serde_json::Error> = serde_json::from_slice(&body);
+        if let Err(err) = body {
+            return match err.classify() {
+                serde_json::error::Category::Syntax
+                    | serde_json::error::Category::Eof
+                    | serde_json::error::Category::Io => {
+                        Box::new(future::ok(ErrorBody::NOT_JSON.to_response()))
+                    }
+                serde_json::error::Category::Data => {
+                    Box::new(future::ok(ErrorBody::BAD_JSON.to_response()))
+                }
+            };
+        };
+        let body = body.unwrap();
+    }))
 }

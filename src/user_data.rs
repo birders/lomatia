@@ -51,6 +51,7 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
     let hostname = server.hostname.clone();
 
     let query = qstring::QString::from(req.uri().query().unwrap_or(""));
+    // TODO: Move this into a helper function as it is used elsewhere
     Box::new(req.into_body().concat2().and_then(move |body| -> BoxFut {
         let body: Result<serde_json::Value, serde_json::Error> = serde_json::from_slice(&body);
         if let Err(err) = body {
@@ -65,7 +66,7 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
                 }
             };
         }
-        let body = body.unwrap(); // errors are handled above, so unwrap should be okay
+        let body = body.unwrap();
 
         if let Some(auth) = body["auth"].as_object() {
             match query.get("kind").unwrap_or("user") {
