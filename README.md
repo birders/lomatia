@@ -1,4 +1,4 @@
-<img src="icon.png" align="left" height="48" width="48" >
+<img src="icon.png" align="left" height="262" width="896" >
 
 An experimental Matrix homeserver written in Rust.
 ==================================================
