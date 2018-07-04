@@ -1,4 +1,5 @@
-[![](https://github.com/birders/lomatia/icon.png)](https://github.com/birders/lomatia)
+[![](https://github.com/birders/lomatia/blob/master/icon.png)](https://github.com/birders/lomatia)
+
 An experimental Matrix homeserver written in Rust.
 ==================================================
 
