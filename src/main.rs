@@ -9,9 +9,9 @@ extern crate lazy_static;
 extern crate bcrypt;
 extern crate clap;
 extern crate regex;
-extern crate tokio_core;
 extern crate tokio_postgres;
 extern crate uuid;
+extern crate tokio;
 
 mod server_administration;
 // mod session_management;
@@ -91,7 +91,7 @@ impl<'a> ToString for ErrorBody<'a> {
 
 #[derive(Debug)]
 enum Error {
-    DB(tokio_postgres::Error),
+    DB(tokio_postgres::error::Error),
     CanceledFuture,
 }
 
@@ -101,26 +101,9 @@ impl From<futures::Canceled> for Error {
     }
 }
 
-impl From<tokio_postgres::Error> for Error {
-    fn from(err: tokio_postgres::Error) -> Error {
+impl From<tokio_postgres::error::Error> for Error {
+    fn from(err: tokio_postgres::error::Error) -> Error {
         Error::DB(err)
-    }
-}
-
-fn run_on_main<R, E: From<futures::Canceled>, F: 'static + Future<Item = R, Error = E> + Send>(
-    remote: &tokio_core::reactor::Remote,
-    f: impl FnOnce(&tokio_core::reactor::Handle) -> F + Send + 'static,
-) -> Box<Future<Item = R, Error = E> + Send> {
-    match remote.handle() {
-        Some(handle) => Box::new(f(&handle)),
-        None => {
-            let (tx, rx) = futures::sync::oneshot::channel::<F>();
-            remote.spawn(move |handle| {
-                tx.send(f(handle)).ok();
-                Ok(())
-            });
-            Box::new(rx.flatten())
-        }
     }
 }
 
@@ -129,7 +112,6 @@ const APPLICATION_JSON: &'static str = "application/json";
 pub struct LMServer {
     cpupool: Arc<futures_cpupool::CpuPool>,
     db_params: tokio_postgres::params::ConnectParams,
-    remote: tokio_core::reactor::Remote,
     hostname: Arc<String>,
 }
 
@@ -184,26 +166,22 @@ fn main() {
 
     let address = (ip_address, port).into();
 
-    let mut core = tokio_core::reactor::Core::new().unwrap();
-
     let cpupool = Arc::new(futures_cpupool::Builder::new().create());
     let db_params = tokio_postgres::params::IntoConnectParams::into_connect_params(
         std::env::var("DATABASE_URL").expect("Missing DATABASE_URL"),
     ).unwrap();
     let hostname = Arc::new("localhost:8448".to_owned()); // TODO adjust this
-    let remote = core.remote();
 
     let server = Server::bind(&address)
         .serve(move || -> future::FutureResult<LMServer, hyper::Error> {
             future::ok(LMServer {
                 cpupool: cpupool.clone(),
                 db_params: db_params.clone(),
-                remote: remote.clone(),
                 hostname: hostname.clone(),
             })
         })
         .map_err(|e| eprintln!("server error: {}", e));
 
     println!("Listening on http://{}...", address);
-    core.run(server);
+    tokio::run(server);
 }

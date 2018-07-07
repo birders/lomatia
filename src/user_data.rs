@@ -4,12 +4,13 @@ use qstring;
 use serde_json;
 use tokio_postgres;
 use uuid;
+use futures;
 
 use futures::{future, Future, Stream};
 use hyper::{Body, Request, Response, StatusCode};
 use regex::Regex;
 
-use {error_code, run_on_main, BoxFut, ErrorBody, LMServer, APPLICATION_JSON};
+use {error_code, BoxFut, ErrorBody, LMServer, APPLICATION_JSON};
 
 lazy_static! {
     static ref VALID_USERNAME_RE: Regex = Regex::new("^[a-z-.=_/0-9]+$").unwrap();
@@ -30,24 +31,32 @@ fn generate_device_id() -> String {
 }
 
 fn create_access_token(
-    db: tokio_postgres::Connection,
+    mut db: tokio_postgres::Client,
     user_id: uuid::Uuid,
     device_id: String,
 ) -> impl Future<
-    Item = (String, tokio_postgres::Connection),
-    Error = (tokio_postgres::Error, tokio_postgres::Connection),
+    Item = (String, tokio_postgres::Client),
+    Error = (tokio_postgres::error::Error, tokio_postgres::Client),
 > {
     let token = generate_access_token();
-    db.prepare(NEW_TOKEN_QUERY).and_then(move |(q, db)| {
-        db.execute(&q, &[&token, &user_id, &device_id])
-            .and_then(move |(_, db)| Ok((token.to_string(), db)))
-    })
+    db.prepare(NEW_TOKEN_QUERY)
+        .then(move |res| -> Box<Future<Item=_, Error=_> + Send> {
+            match res {
+                Ok(q) => Box::new(db.execute(&q, &[&token, &user_id, &device_id])
+                                  .then(move |res| {
+                                      match res {
+                                          Ok(_) => Ok((token.to_string(), db)),
+                                          Err(err) => Err((err, db))
+                                      }
+                                  })),
+                Err(err) => Box::new(futures::future::err((err, db)))
+            }
+        })
 }
 
 pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
     let cpupool = server.cpupool.clone();
     let db_params = server.db_params.clone();
-    let remote = server.remote.clone();
     let hostname = server.hostname.clone();
 
     let query = qstring::QString::from(req.uri().query().unwrap_or(""));
@@ -86,19 +95,17 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
                                     Ok(hash) => {
                                         println!("{:?}", hash);
                                         Box::new(
-                                            run_on_main(&remote, move |handle| {
-                                                tokio_postgres::Connection::connect(
+                                                tokio_postgres::connect(
                                                     db_params,
                                                     tokio_postgres::TlsMode::None,
-                                                    &handle,
-                                                ).and_then(move |db| {
+                                                ).and_then(move |(mut db, _)| {
                                                     db.prepare(REGISTER_QUERY)
-                                                        .and_then(move |(q, db)| {
+                                                        .and_then(move |q| {
                                                             let id = uuid::Uuid::new_v4();
                                                             {
                                                                        let values: Vec<&tokio_postgres::types::ToSql> = vec![&id, &username, &hash];
                                                                        db.execute(&q, &values)
-                                                                   }.and_then(move |(_, db)| Ok(((id, username), db)))
+                                                                   }.map(move |_| ((id, username), db))
                                                         })
                                                         .and_then(
                                                             move |((user_id, username), db)| {
@@ -107,13 +114,13 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
                                                                         generate_device_id()
                                                                     });
                                                                 create_access_token(db, user_id.clone(), device_id.clone())
-                                                                           .and_then(|(token, db)| Ok((token, device_id, username)))
+                                                                           .and_then(|(token, _)| Ok((token, device_id, username)))
+                                                                           .map_err(|(e, _)| e)
                                                             },
                                                         )
-                                                        .map_err(|(e, _db)| e)
                                                 })
                                                     .map_err(::Error::from)
-                                            }).and_then(move |(token, device_id, username)| {
+                                            .and_then(move |(token, device_id, username)| {
                                                 Ok(Response::new(Body::from(
                                                     json!({
                                                 "user_id": username,

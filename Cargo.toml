@@ -14,6 +14,11 @@ lazy_static = "1.0.1"
 qstring = "0.6.0"
 regex = "1.0.0"
 serde_json = "1.0.20"
-tokio-core = "0.1.17"
-tokio-postgres = { version = "0.3.0", features = ["with-uuid"] }
-uuid = { version = "0.5.1", features = ["v4"] }
+tokio = "0.1"
+# tokio-postgres = { git = "https://github.com/sfackler/rust-postgres", rev = "1788a03", features = ["with-uuid-0.6"] }
+tokio-postgres = { path = "../rust-postgres/tokio-postgres", features = ["with-uuid-0.6"] }
+uuid = { version = "0.6", features = ["v4"] }
+
+[patch.crates-io]
+tokio-uds = { git = "https://github.com/tokio-rs/tokio", rev = "f98b81e" }
+tokio-io = { git = "https://github.com/tokio-rs/tokio", rev = "f98b81e" }
