@@ -177,6 +177,14 @@ fn main() {
                 .takes_value(true)
                 .default_value("8448"),
         )
+        .arg(
+            clap::Arg::with_name("database-url")
+                .long("database-url")
+                .help("Sets the URL to the Postgres database")
+                .takes_value(true)
+                .env("DATABASE_URL")
+                .required(true)
+        )
         .get_matches();
 
     let ip_address = std::net::IpAddr::from_str(matches.value_of("address").unwrap()).unwrap();
@@ -188,7 +196,7 @@ fn main() {
 
     let cpupool = Arc::new(futures_cpupool::Builder::new().create());
     let db_params = tokio_postgres::params::IntoConnectParams::into_connect_params(
-        std::env::var("DATABASE_URL").expect("Missing DATABASE_URL"), // TODO: adjust this
+        matches.value_of("database-url").unwrap()
     ).unwrap();
     let hostname = Arc::new("localhost:8448".to_owned()); // TODO: adjust this
     let remote = core.remote();
