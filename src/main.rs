@@ -188,9 +188,9 @@ fn main() {
 
     let cpupool = Arc::new(futures_cpupool::Builder::new().create());
     let db_params = tokio_postgres::params::IntoConnectParams::into_connect_params(
-        std::env::var("DATABASE_URL").expect("Missing DATABASE_URL"),
+        std::env::var("DATABASE_URL").expect("Missing DATABASE_URL"), // TODO: adjust this
     ).unwrap();
-    let hostname = Arc::new("localhost:8448".to_owned()); // TODO adjust this
+    let hostname = Arc::new("localhost:8448".to_owned()); // TODO: adjust this
     let remote = core.remote();
 
     let server = Server::bind(&address)
@@ -202,8 +202,9 @@ fn main() {
                 hostname: hostname.clone(),
             })
         })
-        .map_err(|e| eprintln!("server error: {}", e));
+        .map_err(|e| eprintln!("Server error: {}", e));
 
     println!("Listening on http://{}...", address);
-    core.run(server).unwrap();
+    core.run(server)
+        .expect("Server encountered a runtime error");
 }
