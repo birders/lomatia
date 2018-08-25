@@ -27,8 +27,8 @@ use std::sync::Arc;
 type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
 mod error_code {
-    pub const CHAT_LOMATIA_INVALID_PARAM: &'static str = "CHAT_LOMATIA_INVALID_PARAM";
-    pub const CHAT_LOMATIA_INTERNAL_ERROR: &'static str = "CHAT_LOMATIA_INTERNAL_ERROR";
+    pub const CHAT_LOMATIA_INVALID_PARAM:  &str = "CHAT_LOMATIA_INVALID_PARAM";
+    pub const CHAT_LOMATIA_INTERNAL_ERROR: &str = "CHAT_LOMATIA_INTERNAL_ERROR";
 }
 
 struct ErrorBody<'a> {
@@ -64,8 +64,6 @@ impl<'a> ErrorBody<'a> {
     pub fn new<'b>(errcode: &'static str, error: &'b str) -> ErrorBody<'b> {
         ErrorBody { errcode, error }
     }
-}
-impl<'a> ErrorBody<'a> {
     pub fn to_response(&self) -> Response<Body> {
         let mut resp = Response::new(Body::from(self.to_string()));
         *resp.status_mut() = match self.errcode {
