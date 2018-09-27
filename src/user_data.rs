@@ -2,6 +2,7 @@ use bcrypt;
 use hyper;
 use qstring;
 use serde_json;
+use tokio;
 use tokio_postgres;
 use uuid;
 use futures;
@@ -98,7 +99,8 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
                                                 tokio_postgres::connect(
                                                     db_params,
                                                     tokio_postgres::TlsMode::None,
-                                                ).and_then(move |(mut db, _)| {
+                                                ).and_then(move |(mut db, conn)| {
+                                                    conn.join(
                                                     db.prepare(REGISTER_QUERY)
                                                         .and_then(move |q| {
                                                             let id = uuid::Uuid::new_v4();
@@ -117,10 +119,10 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
                                                                            .and_then(|(token, _)| Ok((token, device_id, username)))
                                                                            .map_err(|(e, _)| e)
                                                             },
-                                                        )
+                                                        ))
                                                 })
                                                     .map_err(::Error::from)
-                                            .and_then(move |(token, device_id, username)| {
+                                            .and_then(move |(_, (token, device_id, username))| {
                                                 Ok(Response::new(Body::from(
                                                     json!({
                                                 "user_id": username,
