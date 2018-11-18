@@ -1,19 +1,9 @@
-use bcrypt;
-use hyper;
-use qstring;
-use serde_json;
-use tokio_postgres;
-use uuid;
-
 use futures::{future, Future, Stream};
 use hyper::{Body, Request, Response, StatusCode};
 use regex::Regex;
+use serde_json::json;
 
 use crate::{error_code, run_on_main, BoxFut, ErrorBody, LMServer, APPLICATION_JSON};
-
-lazy_static! {
-    static ref VALID_USERNAME_RE: Regex = Regex::new("^[a-z-.=_/0-9]+$").unwrap();
-}
 
 const REGISTER_QUERY: &'static str =
     "INSERT INTO users (id, localpart, passhash) VALUES ($1, $2, $3)";
@@ -73,7 +63,8 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
                 "guest" => Box::new(future::ok(ErrorBody::GUEST_ACCESS_FORBIDDEN.to_response())),
                 "user" => {
                     let username = body["username"].as_str().unwrap_or("").to_owned();
-                    if !VALID_USERNAME_RE.is_match(&username) {
+                    let is_valid_username: Regex = Regex::new("^[a-z-.=_/0-9]+$").unwrap();
+                    if !is_valid_username.is_match(&username) {
                         return Box::new(future::ok(ErrorBody::INVALID_USERNAME.to_response()));
                     }
                     let password = body["password"].to_string();
@@ -97,7 +88,7 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
                                                         .and_then(move |(q, db)| {
                                                             let id = uuid::Uuid::new_v4();
                                                             {
-                                                                       let values: Vec<&tokio_postgres::types::ToSql> = vec![&id, &username, &hash];
+                                                                       let values: Vec<&dyn tokio_postgres::types::ToSql> = vec![&id, &username, &hash];
                                                                        db.execute(&q, &values)
                                                                    }.and_then(move |(_, db)| Ok(((id, username), db)))
                                                         })

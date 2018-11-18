@@ -1,7 +1,6 @@
-use hyper;
-
 use futures::future;
 use hyper::{Body, Response, StatusCode};
+use serde_json::json;
 
 use crate::{BoxFut, APPLICATION_JSON};
 
@@ -12,7 +11,8 @@ pub fn versions() -> BoxFut {
                 "versions": [
                     "r0.3.0"
                 ]
-            }).to_string(),
+            })
+        .to_string(),
     ));
     *resp.status_mut() = StatusCode::OK;
     resp.headers_mut().insert(

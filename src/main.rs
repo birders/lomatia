@@ -1,18 +1,3 @@
-extern crate futures;
-extern crate hyper;
-#[macro_use]
-extern crate serde_json;
-extern crate futures_cpupool;
-extern crate qstring;
-#[macro_use]
-extern crate lazy_static;
-extern crate bcrypt;
-extern crate clap;
-extern crate regex;
-extern crate tokio_core;
-extern crate tokio_postgres;
-extern crate uuid;
-
 mod server_administration;
 // mod session_management;
 mod user_data;
@@ -21,13 +6,14 @@ use futures::future;
 use hyper::rt::Future;
 use hyper::service::Service;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
+use serde_json::json;
 use std::str::FromStr;
 use std::sync::Arc;
 
-type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
+type BoxFut = Box<dyn Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
 mod error_code {
-    pub const CHAT_LOMATIA_INVALID_PARAM:  &str = "CHAT_LOMATIA_INVALID_PARAM";
+    pub const CHAT_LOMATIA_INVALID_PARAM: &str = "CHAT_LOMATIA_INVALID_PARAM";
     pub const CHAT_LOMATIA_INTERNAL_ERROR: &str = "CHAT_LOMATIA_INTERNAL_ERROR";
 }
 
@@ -83,7 +69,8 @@ impl<'a> ToString for ErrorBody<'a> {
         json!({
             "errcode": self.errcode,
             "error": self.error
-        }).to_string()
+        })
+        .to_string()
     }
 }
 
@@ -108,7 +95,7 @@ impl From<tokio_postgres::Error> for Error {
 fn run_on_main<R, E: From<futures::Canceled>, F: 'static + Future<Item = R, Error = E> + Send>(
     remote: &tokio_core::reactor::Remote,
     f: impl FnOnce(&tokio_core::reactor::Handle) -> F + Send + 'static,
-) -> Box<Future<Item = R, Error = E> + Send> {
+) -> Box<dyn Future<Item = R, Error = E> + Send> {
     match remote.handle() {
         Some(handle) => Box::new(f(&handle)),
         None => {
@@ -181,7 +168,7 @@ fn main() {
                 .help("Sets the URL to the Postgres database")
                 .takes_value(true)
                 .env("DATABASE_URL")
-                .required(true)
+                .required(true),
         )
         .get_matches();
 
@@ -194,8 +181,9 @@ fn main() {
 
     let cpupool = Arc::new(futures_cpupool::Builder::new().create());
     let db_params = tokio_postgres::params::IntoConnectParams::into_connect_params(
-        matches.value_of("database-url").unwrap()
-    ).unwrap();
+        matches.value_of("database-url").unwrap(),
+    )
+    .unwrap();
     let hostname = Arc::new("localhost:8448".to_owned()); // TODO: adjust this
     let remote = core.remote();
 
