@@ -5,7 +5,7 @@
 Lomatia is a Matrix homeserver written entirely in Rust. It is currently WIP,
 and aims to implement the latest revision of the Matrix protocol.
 
-## TODO
+## Features
 
  - Core API
     - User data
