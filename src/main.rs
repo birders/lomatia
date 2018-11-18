@@ -174,20 +174,17 @@ fn main() {
 
     let ip_address = std::net::IpAddr::from_str(matches.value_of("address").unwrap()).unwrap();
     let port = matches.value_of("port").unwrap().parse::<u16>().unwrap();
-
-    let address = (ip_address, port).into();
-
+    let socket_addr = std::net::SocketAddr::new(ip_address, port);
     let mut core = tokio_core::reactor::Core::new().unwrap();
-
     let cpupool = Arc::new(futures_cpupool::Builder::new().create());
     let db_params = tokio_postgres::params::IntoConnectParams::into_connect_params(
         matches.value_of("database-url").unwrap(),
     )
     .unwrap();
-    let hostname = Arc::new("localhost:8448".to_owned()); // TODO: adjust this
+    let hostname = Arc::new(socket_addr.to_string().to_owned());
     let remote = core.remote();
 
-    let server = Server::bind(&address)
+    let server = Server::bind(&socket_addr.to_owned())
         .serve(move || -> future::FutureResult<LMServer, hyper::Error> {
             future::ok(LMServer {
                 cpupool: cpupool.clone(),
@@ -198,7 +195,7 @@ fn main() {
         })
         .map_err(|e| eprintln!("Server error: {}", e));
 
-    println!("Listening on http://{}...", address);
+    println!("Listening on http://{}...", socket_addr);
     core.run(server)
         .expect("Server encountered a runtime error");
 }
