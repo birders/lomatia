@@ -1,7 +1,9 @@
-<img src="icon.png" align="left" height="262" width="896" >
+<p align=center><img src="img/icon.png" width="20%"></p>
 
-An experimental Matrix homeserver written in Rust.
-==================================================
+<h1 align="center">Lomatia</h1>
+
+Lomatia is a Matrix homeserver written entirely in Rust. It is currently WIP,
+and aims to implement the latest revision of the Matrix protocol.
 
 ## TODO
 
