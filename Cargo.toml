@@ -3,6 +3,7 @@ name = "lomatia"
 version = "0.1.0"
 authors = [ "LEARAX <willculhane3@gmail.com>",
             "vpzomtrrfrt <vpzomtrrfrt@gmail.com>" ]
+edition = "2018"
 
 [dependencies]
 bcrypt = "0.2"

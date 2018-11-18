@@ -3,7 +3,7 @@ use hyper;
 use futures::future;
 use hyper::{Body, Response, StatusCode};
 
-use {BoxFut, APPLICATION_JSON};
+use crate::{BoxFut, APPLICATION_JSON};
 
 /// Returns the versions of the specification supported by the server.
 pub fn versions() -> BoxFut {

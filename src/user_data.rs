@@ -9,7 +9,7 @@ use futures::{future, Future, Stream};
 use hyper::{Body, Request, Response, StatusCode};
 use regex::Regex;
 
-use {error_code, run_on_main, BoxFut, ErrorBody, LMServer, APPLICATION_JSON};
+use crate::{error_code, run_on_main, BoxFut, ErrorBody, LMServer, APPLICATION_JSON};
 
 lazy_static! {
     static ref VALID_USERNAME_RE: Regex = Regex::new("^[a-z-.=_/0-9]+$").unwrap();
@@ -68,7 +68,7 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
         }
         let body = body.unwrap();
 
-        if let Some(auth) = body["auth"].as_object() {
+        if let Some(_auth) = body["auth"].as_object() {
             match query.get("kind").unwrap_or("user") {
                 "guest" => Box::new(future::ok(ErrorBody::GUEST_ACCESS_FORBIDDEN.to_response())),
                 "user" => {
@@ -108,12 +108,12 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
                                                                         generate_device_id()
                                                                     });
                                                                 create_access_token(db, user_id.clone(), device_id.clone())
-                                                                           .and_then(|(token, db)| Ok((token, device_id, username)))
+                                                                           .and_then(|(token, _db)| Ok((token, device_id, username)))
                                                             },
                                                         )
                                                         .map_err(|(e, _db)| e)
                                                 })
-                                                    .map_err(::Error::from)
+                                                    .map_err(crate::Error::from)
                                             }).and_then(move |(token, device_id, username)| {
                                                 Ok(Response::new(Body::from(
                                                     json!({
