@@ -1,3 +1,4 @@
 rusty-tags.*
 /target
 **/*.rs.bk
+/.vagrant
