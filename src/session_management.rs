@@ -9,7 +9,7 @@ use futures::{future, Future, Stream};
 use hyper::{Body, Request, Response, StatusCode};
 use regex::Regex;
 
-use {error_code, run_on_main, BoxFut, ErrorBody, LMServer, APPLICATION_JSON};
+use crate::{error_code, run_on_main, BoxFut, ErrorBody, LMServer, APPLICATION_JSON};
 
 pub fn login(server: &LMServer, req: Request<Body>) -> BoxFut {
     // Request will be of the form:
@@ -43,10 +43,10 @@ pub fn login(server: &LMServer, req: Request<Body>) -> BoxFut {
         if let Err(err) = body {
             return match err.classify() {
                 serde_json::error::Category::Syntax
-                    | serde_json::error::Category::Eof
-                    | serde_json::error::Category::Io => {
-                        Box::new(future::ok(ErrorBody::NOT_JSON.to_response()))
-                    }
+                | serde_json::error::Category::Eof
+                | serde_json::error::Category::Io => {
+                    Box::new(future::ok(ErrorBody::NOT_JSON.to_response()))
+                }
                 serde_json::error::Category::Data => {
                     Box::new(future::ok(ErrorBody::BAD_JSON.to_response()))
                 }
