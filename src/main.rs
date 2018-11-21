@@ -130,6 +130,7 @@ impl Service for LMServer {
         match (req.method(), req.uri().path()) {
             (&Method::GET, "/_matrix/client/versions") => server_administration::versions(),
             (&Method::POST, "/_matrix/client/r0/register") => user_data::register(self, req),
+            // (&Method::GET, "/_matrix/client/r0/login") => session_management::login_opts(),
             // (&Method::POST, "/_matrix/client/r0/login") => session_management::login(self, req),
             _ => {
                 let mut response = Response::new(Body::from(ErrorBody::UNRECOGNIZED.to_string()));
