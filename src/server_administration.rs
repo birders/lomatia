@@ -21,3 +21,12 @@ pub fn versions() -> BoxFut {
     );
     Box::new(future::ok(resp))
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn versions() {
+        let request = crate::server_administration::versions();
+        request.unwrap();
+    }
+}
