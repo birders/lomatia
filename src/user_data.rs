@@ -39,7 +39,7 @@ fn create_access_token(
 
 pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
     let cpupool = server.cpupool.clone();
-    let db_params = server.db_params.clone();
+    let db_pool = server.db_pool.clone();
     let hostname = server.hostname.clone();
 
     let query = qstring::QString::from(req.uri().query().unwrap_or(""));
@@ -80,9 +80,7 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
                                     Ok(hash) => {
                                         println!("{:?}", hash);
                                         Box::new(
-                                                db_params.connect(tokio_postgres::NoTls)
-                                                .and_then(move |(mut db, conn)| {
-                                                    tokio::spawn(conn.map_err(|err| panic!("ERR: {:?}", err)));
+                                            db_pool.run(|mut db| {
                                                     db.prepare(REGISTER_QUERY)
                                                         .then(|res| tack_on(res, db))
                                                         .and_then(move |(q, mut db)| {
@@ -100,10 +98,9 @@ pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
                                                                         generate_device_id()
                                                                     });
                                                                 create_access_token(db, user_id.clone(), device_id.clone())
-                                                                           .and_then(|(token, _db)| Ok((token, device_id, username)))
+                                                                           .and_then(|(token, db)| Ok(((token, device_id, username), db)))
                                                             },
                                                         )
-                                                        .map_err(|(e, _db)| e)
                                                 })
                                                     .map_err(crate::Error::from)
                                             .and_then(move |(token, device_id, username)| {
