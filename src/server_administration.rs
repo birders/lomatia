@@ -24,9 +24,11 @@ pub fn versions() -> BoxFut {
 
 #[cfg(test)]
 mod tests {
+    use futures::Future;
+
     #[test]
     fn versions() {
-        let request = crate::server_administration::versions();
+        let request = crate::server_administration::versions().wait();
         request.unwrap();
     }
 }
