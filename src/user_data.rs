@@ -30,11 +30,13 @@ fn create_access_token(
     let token = generate_access_token();
     db.prepare(NEW_TOKEN_QUERY)
         .then(|res| tack_on(res, db))
-        .and_then(move |(q, mut db): (tokio_postgres::Statement, tokio_postgres::Client)| {
-            db.execute(&q, &[&token, &user_id, &device_id])
-                .and_then(move |_| Ok(token.to_string()))
-                .then(|res| tack_on(res, db))
-        })
+        .and_then(
+            move |(q, mut db): (tokio_postgres::Statement, tokio_postgres::Client)| {
+                db.execute(&q, &[&token, &user_id, &device_id])
+                    .and_then(move |_| Ok(token.to_string()))
+                    .then(|res| tack_on(res, db))
+            },
+        )
 }
 
 pub fn register(server: &LMServer, req: Request<Body>) -> BoxFut {
