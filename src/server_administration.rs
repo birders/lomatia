@@ -2,10 +2,10 @@ use futures::future;
 use hyper::{Body, Response, StatusCode};
 use serde_json::json;
 
-use crate::{BoxFut, APPLICATION_JSON};
+use crate::{EndpointFutureBox, APPLICATION_JSON};
 
 /// Returns the versions of the specification supported by the server.
-pub fn versions() -> BoxFut {
+pub fn versions() -> EndpointFutureBox {
     let mut resp = Response::new(Body::from(
         json!({
             "versions": [

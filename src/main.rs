@@ -7,11 +7,12 @@ use hyper::rt::Future;
 use hyper::service::Service;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use serde_json::json;
+use std::borrow::Cow;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 use std::sync::Arc;
 
-type BoxFut = Box<dyn Future<Item = Response<Body>, Error = hyper::Error> + Send>;
+type EndpointFutureBox = Box<dyn Future<Item = Response<Body>, Error = Error> + Send>;
 type DbPool = bb8::Pool<bb8_postgres::PostgresConnectionManager<tokio_postgres::NoTls>>;
 
 mod error_code {
@@ -19,38 +20,31 @@ mod error_code {
     pub const CHAT_LOMATIA_INTERNAL_ERROR: &str = "CHAT_LOMATIA_INTERNAL_ERROR";
 }
 
-struct ErrorBody<'a> {
+#[derive(Debug)]
+pub struct ErrorBody {
     pub errcode: &'static str,
-    pub error: &'a str,
+    pub error: Cow<'static, str>,
 }
-impl<'a> ErrorBody<'a> {
-    const UNRECOGNIZED: ErrorBody<'static> = ErrorBody {
-        errcode: "M_UNRECOGNIZED",
-        error: "Unrecognized request",
-    };
-    const NOT_JSON: ErrorBody<'static> = ErrorBody {
-        errcode: "M_NOT_JSON",
-        error: "Content not JSON",
-    };
-    const BAD_JSON: ErrorBody<'static> = ErrorBody {
-        errcode: "M_BAD_JSON",
-        error: "Invalid JSON body",
-    };
-    const GUEST_ACCESS_FORBIDDEN: ErrorBody<'static> = ErrorBody {
-        errcode: "M_GUEST_ACCESS_FORBIDDEN",
-        error: "Guest accounts are forbidden",
-    };
-    const INVALID_USERNAME: ErrorBody<'static> = ErrorBody {
-        errcode: "M_INVALID_USERNAME",
-        error: "The desired user ID is not a valid user name",
-    };
-    const INTERNAL_ERROR: ErrorBody<'static> = ErrorBody {
-        errcode: error_code::CHAT_LOMATIA_INTERNAL_ERROR,
-        error: "Internal server error",
-    };
+impl ErrorBody {
+    const UNRECOGNIZED: ErrorBody = ErrorBody::new_static("M_UNRECOGNIZED", "Unrecognized request");
+    const NOT_JSON: ErrorBody = ErrorBody::new_static("M_NOT_JSON", "Content not JSON");
+    const BAD_JSON: ErrorBody = ErrorBody::new_static("M_BAD_JSON", "Invalid JSON body");
+    const GUEST_ACCESS_FORBIDDEN: ErrorBody =
+        ErrorBody::new_static("M_GUEST_ACCESS_FORBIDDEN", "Guest accounts are forbidden");
+    const INVALID_USERNAME: ErrorBody = ErrorBody::new_static(
+        "M_INVALID_USERNAME",
+        "The desired user ID is not a valid user name",
+    );
+    const INTERNAL_ERROR: ErrorBody = ErrorBody::new_static(
+        error_code::CHAT_LOMATIA_INTERNAL_ERROR,
+        "Internal server error",
+    );
 
-    pub fn new<'b>(errcode: &'static str, error: &'b str) -> ErrorBody<'b> {
-        ErrorBody { errcode, error }
+    pub const fn new_static(errcode: &'static str, error: &'static str) -> ErrorBody {
+        ErrorBody {
+            errcode,
+            error: Cow::Borrowed(error),
+        }
     }
     pub fn to_response(&self) -> Response<Body> {
         let mut resp = Response::new(Body::from(self.to_string()));
@@ -66,7 +60,7 @@ impl<'a> ErrorBody<'a> {
         resp
     }
 }
-impl<'a> ToString for ErrorBody<'a> {
+impl ToString for ErrorBody {
     fn to_string(&self) -> String {
         json!({
             "errcode": self.errcode,
@@ -77,10 +71,13 @@ impl<'a> ToString for ErrorBody<'a> {
 }
 
 #[derive(Debug)]
-enum Error {
+pub enum Error {
+    Bcrypt(bcrypt::BcryptError),
     DB(tokio_postgres::Error),
     DBPool(bb8::RunError<tokio_postgres::Error>),
     CanceledFuture,
+    Hyper(hyper::Error),
+    UserFacing(ErrorBody),
 }
 
 impl From<futures::Canceled> for Error {
@@ -98,6 +95,24 @@ impl From<tokio_postgres::Error> for Error {
 impl From<bb8::RunError<tokio_postgres::Error>> for Error {
     fn from(err: bb8::RunError<tokio_postgres::Error>) -> Error {
         Error::DBPool(err)
+    }
+}
+
+impl From<ErrorBody> for Error {
+    fn from(err: ErrorBody) -> Error {
+        Error::UserFacing(err)
+    }
+}
+
+impl From<hyper::Error> for Error {
+    fn from(err: hyper::Error) -> Error {
+        Error::Hyper(err)
+    }
+}
+
+impl From<bcrypt::BcryptError> for Error {
+    fn from(err: bcrypt::BcryptError) -> Error {
+        Error::Bcrypt(err)
     }
 }
 
@@ -120,24 +135,35 @@ impl Service for LMServer {
     type ReqBody = Body;
     type ResBody = Body;
     type Error = hyper::Error;
-    type Future = BoxFut;
+    type Future = Box<dyn Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
-    fn call(&mut self, req: Request<Body>) -> BoxFut {
-        match (req.method(), req.uri().path()) {
-            (&Method::GET, "/_matrix/client/versions") => server_administration::versions(),
-            (&Method::POST, "/_matrix/client/r0/register") => user_data::register(self, req),
-            // (&Method::GET, "/_matrix/client/r0/login") => session_management::login_opts(),
-            // (&Method::POST, "/_matrix/client/r0/login") => session_management::login(self, req),
-            _ => {
-                let mut response = Response::new(Body::from(ErrorBody::UNRECOGNIZED.to_string()));
-                *response.status_mut() = StatusCode::BAD_REQUEST;
-                response.headers_mut().insert(
-                    hyper::header::CONTENT_TYPE,
-                    hyper::header::HeaderValue::from_static(APPLICATION_JSON),
-                );
-                Box::new(future::ok(response))
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
+        Box::new(
+            match (req.method(), req.uri().path()) {
+                (&Method::GET, "/_matrix/client/versions") => server_administration::versions(),
+                (&Method::POST, "/_matrix/client/r0/register") => user_data::register(self, req),
+                // (&Method::GET, "/_matrix/client/r0/login") => session_management::login_opts(),
+                // (&Method::POST, "/_matrix/client/r0/login") => session_management::login(self, req),
+                _ => {
+                    let mut response =
+                        Response::new(Body::from(ErrorBody::UNRECOGNIZED.to_string()));
+                    *response.status_mut() = StatusCode::BAD_REQUEST;
+                    response.headers_mut().insert(
+                        hyper::header::CONTENT_TYPE,
+                        hyper::header::HeaderValue::from_static(APPLICATION_JSON),
+                    );
+                    Box::new(future::ok(response))
+                }
             }
-        }
+            .or_else(|err| {
+                if let Error::UserFacing(err) = err {
+                    Ok(err.to_response())
+                } else {
+                    eprintln!("{:?}", err);
+                    Ok(ErrorBody::INTERNAL_ERROR.to_response())
+                }
+            }),
+        )
     }
 }
 
