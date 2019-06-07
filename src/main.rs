@@ -138,6 +138,7 @@ impl Service for LMServer {
     type Future = Box<dyn Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
+        println!("{} {}", req.method(), req.uri().path());
         Box::new(
             match (req.method(), req.uri().path()) {
                 (&Method::GET, "/_matrix/client/versions") => server_administration::versions(),
