@@ -15,11 +15,11 @@ fn generate_access_token() -> uuid::Uuid {
     uuid::Uuid::new_v4()
 }
 
-fn generate_device_id() -> String {
+pub fn generate_device_id() -> String {
     uuid::Uuid::new_v4().to_string()
 }
 
-fn create_access_token(
+pub fn create_access_token(
     mut db: tokio_postgres::Client,
     user_id: uuid::Uuid,
     device_id: String,
