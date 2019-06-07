@@ -8,10 +8,10 @@ use crate::{BoxFut, APPLICATION_JSON};
 pub fn versions() -> BoxFut {
     let mut resp = Response::new(Body::from(
         json!({
-                "versions": [
-                    "r0.3.0"
-                ]
-            })
+            "versions": [
+                "r0.3.0"
+            ]
+        })
         .to_string(),
     ));
     *resp.status_mut() = StatusCode::OK;

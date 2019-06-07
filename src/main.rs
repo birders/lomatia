@@ -147,28 +147,28 @@ fn main() {
         .about("A Matrix homeserver written in Rust")
         .arg(
             clap::Arg::with_name("address")
-            .short("a")
-            .long("address")
-            .help("Sets the IP address used by the server")
-            .takes_value(true)
-            .default_value("127.0.0.1"),
-            )
+                .short("a")
+                .long("address")
+                .help("Sets the IP address used by the server")
+                .takes_value(true)
+                .default_value("127.0.0.1"),
+        )
         .arg(
             clap::Arg::with_name("port")
-            .short("p")
-            .long("port")
-            .help("Sets the port used by the server")
-            .takes_value(true)
-            .default_value("8448"),
-            )
+                .short("p")
+                .long("port")
+                .help("Sets the port used by the server")
+                .takes_value(true)
+                .default_value("8448"),
+        )
         .arg(
             clap::Arg::with_name("database-url")
-            .long("database-url")
-            .help("Sets the URL to the Postgres database")
-            .takes_value(true)
-            .env("DATABASE_URL")
-            .required(true),
-            )
+                .long("database-url")
+                .help("Sets the URL to the Postgres database")
+                .takes_value(true)
+                .env("DATABASE_URL")
+                .required(true),
+        )
         .get_matches();
 
     let ip_address = IpAddr::from_str(matches.value_of("address").unwrap()).unwrap();
@@ -178,22 +178,28 @@ fn main() {
     let db_params = matches.value_of("database-url").unwrap().to_owned();
     let hostname = Arc::new(socket_addr.to_string().to_owned());
 
-    tokio::run(futures::future::lazy(move || {
-        bb8::Pool::builder()
-            .build(bb8_postgres::PostgresConnectionManager::new(db_params, tokio_postgres::NoTls))
-            .map_err(|err| panic!("Failed to connect to database: {:?}", err))
-            .and_then(move |db_pool| {
-                println!("Listening on http://{}...", socket_addr);
+    tokio::run(
+        futures::future::lazy(move || {
+            bb8::Pool::builder()
+                .build(bb8_postgres::PostgresConnectionManager::new(
+                    db_params,
+                    tokio_postgres::NoTls,
+                ))
+                .map_err(|err| panic!("Failed to connect to database: {:?}", err))
+                .and_then(move |db_pool| {
+                    println!("Listening on http://{}...", socket_addr);
 
-                Server::bind(&socket_addr.to_owned())
-                    .serve(move || -> future::FutureResult<LMServer, hyper::Error> {
-                        future::ok(LMServer {
-                            cpupool: cpupool.clone(),
-                            db_pool: db_pool.clone(),
-                            hostname: hostname.clone(),
-                        })
-                    })
-            })
-    })
-               .map_err(|err| panic!("Server encountered a runtime error: {:?}", err)));
+                    Server::bind(&socket_addr.to_owned()).serve(
+                        move || -> future::FutureResult<LMServer, hyper::Error> {
+                            future::ok(LMServer {
+                                cpupool: cpupool.clone(),
+                                db_pool: db_pool.clone(),
+                                hostname: hostname.clone(),
+                            })
+                        },
+                    )
+                })
+        })
+        .map_err(|err| panic!("Server encountered a runtime error: {:?}", err)),
+    );
 }
