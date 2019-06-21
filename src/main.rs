@@ -1,5 +1,5 @@
 mod server_administration;
-// mod session_management;
+mod session_management;
 mod user_data;
 
 use futures::future;
@@ -18,6 +18,8 @@ type DbPool = bb8::Pool<bb8_postgres::PostgresConnectionManager<tokio_postgres::
 mod error_code {
     pub const CHAT_LOMATIA_INVALID_PARAM: &str = "CHAT_LOMATIA_INVALID_PARAM";
     pub const CHAT_LOMATIA_INTERNAL_ERROR: &str = "CHAT_LOMATIA_INTERNAL_ERROR";
+    pub const M_FORBIDDEN: &str = "M_FORBIDDEN";
+    pub const M_UNKNOWN: &str = "M_UNKNOWN";
 }
 
 #[derive(Debug)]
@@ -144,7 +146,7 @@ impl Service for LMServer {
                 (&Method::GET, "/_matrix/client/versions") => server_administration::versions(),
                 (&Method::POST, "/_matrix/client/r0/register") => user_data::register(self, req),
                 // (&Method::GET, "/_matrix/client/r0/login") => session_management::login_opts(),
-                // (&Method::POST, "/_matrix/client/r0/login") => session_management::login(self, req),
+                (&Method::POST, "/_matrix/client/r0/login") => session_management::login(self, req),
                 _ => {
                     let mut response =
                         Response::new(Body::from(ErrorBody::UNRECOGNIZED.to_string()));

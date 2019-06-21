@@ -19,3 +19,5 @@ uuid = { version = "0.7", features = ["v4"] }
 tokio = "0.1.19"
 bb8 = "0.3.0"
 bb8-postgres = "0.3.0"
+serde_derive = "1.0.92"
+serde = "1.0.92"
